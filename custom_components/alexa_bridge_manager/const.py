@@ -29,3 +29,20 @@ KNOWN_ENDPOINTS = {
 # amzn1.application-oa2-client.<hex> / amzn1.oa2-cs.v1.<hex>
 CLIENT_ID_PREFIX = "amzn1.application-oa2-client."
 CLIENT_SECRET_PREFIX = "amzn1.oa2-cs.v1."
+
+# Locale reported to Alexa for exposed entities. Not user-configurable (yet);
+# the manual alexa.smart_home YAML setup defaults to en-US, we default to
+# de-DE since that matches this project's primary audience.
+DEFAULT_LOCALE = "de-DE"
+
+# Keys used inside hass.data[DOMAIN]
+DATA_RUNTIME_CONFIG = "runtime_config"
+DATA_LAST_EXPOSED = "last_exposed"
+
+# Repair issue raised when the manual `alexa: smart_home:` YAML block already
+# owns the /api/alexa/smart_home endpoint (see entity_manager.py).
+ISSUE_SMART_HOME_CONFLICT = "smart_home_conflict"
+
+# How many entities are shown per page in the options flow entity-selection
+# step, grouped by domain, so the form stays usable with hundreds of entities.
+ENTITIES_PER_PAGE = 10

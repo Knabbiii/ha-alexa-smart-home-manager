@@ -24,7 +24,26 @@
       "invalid_endpoint": "Die Endpoint-URL muss mit https:// beginnen."
     },
     "abort": {
-      "already_configured": "Diese Alexa-Skill-Verbindung ist bereits eingerichtet."
+      "already_configured": "Diese Alexa-Skill-Verbindung ist bereits eingerichtet.",
+      "single_instance_allowed": "Es wird nur eine Instanz von Alexa Bridge Manager unterstützt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Freigegebene Entities verwalten",
+        "description": "Wähle eine Domain aus, um deren Entities zu bearbeiten, oder schließe ab, um deine Änderungen zu speichern.",
+        "data": {
+          "domain": "Domain"
+        }
+      },
+      "entities_page": {
+        "title": "{domain} (Seite {page}/{total_pages})",
+        "description": "Lege fest, welche Entities für Alexa freigegeben werden sollen, und vergib optional einen eigenen Alexa-Namen. Bleibt der Name leer, wird der Home-Assistant-Name verwendet."
+      }
+    },
+    "error": {
+      "duplicate_names": "Manche Alexa-Namen werden mehrfach verwendet, Alexa kann sie nicht unterscheiden: {duplicates}"
     }
   },
   "selector": {
@@ -35,6 +54,12 @@
         "https://api.fe.amazonalexa.com/v3/events": "Fernost (FE)",
         "custom": "Eigene URL"
       }
+    }
+  },
+  "issues": {
+    "smart_home_conflict": {
+      "title": "Alexa-Smart-Home-Endpoint bereits belegt",
+      "description": "In deiner configuration.yaml gibt es noch einen manuellen `alexa: smart_home:`-Block, der denselben Endpoint belegt, den diese Integration benötigt. Entferne diesen Block aus der configuration.yaml (andere `alexa:`-Abschnitte wie `flash_briefings` kannst du behalten), starte Home Assistant neu und lade dann die Alexa-Bridge-Manager-Integration neu."
     }
   }
 }

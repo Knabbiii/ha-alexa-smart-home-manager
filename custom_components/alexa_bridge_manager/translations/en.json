@@ -24,7 +24,26 @@
       "invalid_endpoint": "The endpoint URL must start with https://."
     },
     "abort": {
-      "already_configured": "This Alexa skill connection is already configured."
+      "already_configured": "This Alexa skill connection is already configured.",
+      "single_instance_allowed": "Only one Alexa Bridge Manager instance is supported."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage exposed entities",
+        "description": "Pick a domain to review its entities, or finish to save your changes.",
+        "data": {
+          "domain": "Domain"
+        }
+      },
+      "entities_page": {
+        "title": "{domain} (page {page}/{total_pages})",
+        "description": "Toggle which entities are exposed to Alexa and optionally set a custom Alexa name. Leave the name empty to use the entity's Home Assistant name."
+      }
+    },
+    "error": {
+      "duplicate_names": "Some Alexa names are used more than once, Alexa cannot tell them apart: {duplicates}"
     }
   },
   "selector": {
@@ -35,6 +54,12 @@
         "https://api.fe.amazonalexa.com/v3/events": "Far East (FE)",
         "custom": "Custom URL"
       }
+    }
+  },
+  "issues": {
+    "smart_home_conflict": {
+      "title": "Alexa Smart Home endpoint already in use",
+      "description": "Home Assistant already has a manual `alexa: smart_home:` block in configuration.yaml, which claims the same endpoint this integration needs. Remove that block from configuration.yaml (you can keep other `alexa:` sections such as `flash_briefings`), restart Home Assistant, then reload the Alexa Bridge Manager integration."
     }
   }
 }
