@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Alexa Bridge Manager einrichten",
+        "description": "Gib die Zugangsdaten deines Alexa Smart Home Skills ein (Alexa Developer Console → Smart Home → Account verknüpfen).",
+        "data": {
+          "endpoint": "Alexa Event Gateway",
+          "client_id": "Client ID",
+          "client_secret": "Client Secret"
+        }
+      },
+      "custom_endpoint": {
+        "title": "Eigenes Event Gateway",
+        "description": "Gib die vollständige URL des Alexa Event Gateways ein.",
+        "data": {
+          "endpoint": "Event Gateway URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_client_id": "Die Client ID hat nicht das erwartete Format (sollte mit 'amzn1.application-oa2-client.' beginnen).",
+      "invalid_client_secret": "Das Client Secret hat nicht das erwartete Format (sollte mit 'amzn1.oa2-cs.v1.' beginnen).",
+      "invalid_endpoint": "Die Endpoint-URL muss mit https:// beginnen."
+    },
+    "abort": {
+      "already_configured": "Diese Alexa-Skill-Verbindung ist bereits eingerichtet."
+    }
+  },
+  "selector": {
+    "endpoint": {
+      "options": {
+        "https://api.eu.amazonalexa.com/v3/events": "Europa (EU)",
+        "https://api.amazonalexa.com/v3/events": "Nordamerika (NA)",
+        "https://api.fe.amazonalexa.com/v3/events": "Fernost (FE)",
+        "custom": "Eigene URL"
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "domain": "alexa_bridge_manager",
+  "name": "Alexa Bridge Manager",
+  "codeowners": ["@Knabbiii"],
+  "config_flow": true,
+  "documentation": "https://github.com/Knabbiii/alexa_bridge_manager",
+  "issue_tracker": "https://github.com/Knabbiii/alexa_bridge_manager/issues",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "0.1.0"
+}
