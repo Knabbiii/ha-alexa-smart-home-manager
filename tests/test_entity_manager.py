@@ -141,10 +141,10 @@ async def test_sync_discovery_sends_add_and_delete(hass: HomeAssistant) -> None:
         new_callable=lambda: property(lambda self: True),
     ), patch(
         "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
-        new=AsyncMock(),
+        new=AsyncMock(return_value=Mock()),
     ) as mock_add, patch(
         "custom_components.alexa_bridge_manager.entity_manager.async_send_delete_message",
-        new=AsyncMock(),
+        new=AsyncMock(return_value=Mock()),
     ) as mock_delete:
         await entity_manager.async_sync_discovery(hass, entry)
 
@@ -187,10 +187,10 @@ async def test_sync_discovery_sends_update_on_rename_alone(
         new_callable=lambda: property(lambda self: True),
     ), patch(
         "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
-        new=AsyncMock(),
+        new=AsyncMock(return_value=Mock()),
     ) as mock_add, patch(
         "custom_components.alexa_bridge_manager.entity_manager.async_send_delete_message",
-        new=AsyncMock(),
+        new=AsyncMock(return_value=Mock()),
     ) as mock_delete:
         await entity_manager.async_sync_discovery(hass, entry)
 
@@ -212,8 +212,55 @@ async def test_sync_discovery_skips_when_not_authorized(hass: HomeAssistant) -> 
 
     with patch(
         "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
-        new=AsyncMock(),
+        new=AsyncMock(return_value=Mock()),
     ) as mock_add:
         await entity_manager.async_sync_discovery(hass, entry)
 
     mock_add.assert_not_awaited()
+
+
+async def test_sync_discovery_does_not_advance_state_on_gateway_error(
+    hass: HomeAssistant,
+) -> None:
+    """If Amazon rejects the push, the entity is retried on the next save.
+
+    Regression guard for a real-world symptom: async_send_add_or_update_message
+    only raises for connection-level failures, not for a 4xx/5xx response
+    from Amazon (e.g. an expired token) - `raise_for_status()` must be called
+    explicitly. If a rejection were treated as success, last_exposed/
+    last_names would advance to the new state even though Alexa never
+    actually learned about it, permanently hiding the failure.
+    """
+    entry = _make_entry(
+        hass,
+        {
+            CONF_EXPOSED_ENTITIES: ["light.tv_led"],
+            CONF_ENTITY_NAMES: {"light.tv_led": "TV Licht"},
+        },
+    )
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    domain_data[DATA_RUNTIME_CONFIG] = config
+    domain_data[DATA_LAST_EXPOSED] = {entry.entry_id: ["light.tv_led"]}
+    domain_data[DATA_LAST_NAMES] = {
+        entry.entry_id: {"light.tv_led": "TV LED Beleuchtung"}
+    }
+
+    rejected_response = Mock()
+    rejected_response.raise_for_status.side_effect = Exception("401 Unauthorized")
+
+    with patch.object(
+        entity_manager.AlexaBridgeManagerConfig,
+        "authorized",
+        new_callable=lambda: property(lambda self: True),
+    ), patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
+        new=AsyncMock(return_value=rejected_response),
+    ):
+        await entity_manager.async_sync_discovery(hass, entry)
+
+    # State must stay at the old (unsynced) name so the next save retries it.
+    assert domain_data[DATA_LAST_NAMES][entry.entry_id] == {
+        "light.tv_led": "TV LED Beleuchtung"
+    }

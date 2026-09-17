@@ -271,7 +271,17 @@ async def async_sync_discovery(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """
     domain_data = hass.data.get(DOMAIN, {})
     config: AlexaBridgeManagerConfig | None = domain_data.get(DATA_RUNTIME_CONFIG)
-    if config is None or not config.authorized:
+    if config is None:
+        _LOGGER.warning(
+            "Skipping Alexa discovery sync: runtime config not set up yet"
+        )
+        return
+    if not config.authorized:
+        _LOGGER.warning(
+            "Skipping Alexa discovery sync: this skill has not completed Alexa "
+            "account linking yet (no AcceptGrant/directive received from Alexa "
+            "so far), so there is no access token to call the event gateway with"
+        )
         return
 
     last_exposed: dict[str, list[str]] = domain_data.setdefault(DATA_LAST_EXPOSED, {})
@@ -291,15 +301,36 @@ async def async_sync_discovery(hass: HomeAssistant, entry: ConfigEntry) -> None:
     }
     to_upsert = newly_exposed | renamed
 
-    try:
-        if to_upsert:
-            await async_send_add_or_update_message(hass, config, list(to_upsert))
-        if removed:
-            await async_send_delete_message(hass, config, list(removed))
-    except Exception:  # noqa: BLE001 - network call to Amazon, must not crash
-        _LOGGER.warning("Failed to sync Alexa discovery state", exc_info=True)
+    if not to_upsert and not removed:
+        _LOGGER.debug("Alexa discovery sync: nothing changed, nothing to send")
         return
 
+    _LOGGER.info(
+        "Alexa discovery sync: sending AddOrUpdateReport for %s, "
+        "DeleteReport for %s",
+        sorted(to_upsert) or "-",
+        sorted(removed) or "-",
+    )
+
+    try:
+        if to_upsert:
+            response = await async_send_add_or_update_message(
+                hass, config, list(to_upsert)
+            )
+            response.raise_for_status()
+        if removed:
+            response = await async_send_delete_message(hass, config, list(removed))
+            response.raise_for_status()
+    except Exception:  # noqa: BLE001 - network call to Amazon, must not crash
+        _LOGGER.warning(
+            "Alexa rejected or could not be reached for the discovery sync - "
+            "the exposed/named entities in Home Assistant and what Alexa "
+            "actually knows are now out of sync until the next successful save",
+            exc_info=True,
+        )
+        return
+
+    _LOGGER.info("Alexa discovery sync: gateway accepted the update")
     last_exposed[entry.entry_id] = list(current_exposed)
     last_names[entry.entry_id] = dict(current_names)
 
