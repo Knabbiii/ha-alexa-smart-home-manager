@@ -283,17 +283,6 @@ async def async_sync_discovery(hass: HomeAssistant, entry: ConfigEntry) -> None:
     last_exposed[entry.entry_id] = list(current)
 
 
-def entities_by_domain(hass: HomeAssistant) -> dict[str, list[str]]:
-    """Group all known entity IDs by domain, sorted, for the options flow."""
-    grouped: dict[str, list[str]] = {}
-    for state in hass.states.async_all():
-        domain = state.domain
-        grouped.setdefault(domain, []).append(state.entity_id)
-    for entity_ids in grouped.values():
-        entity_ids.sort()
-    return dict(sorted(grouped.items()))
-
-
 def find_duplicate_names(entity_names: dict[str, str]) -> dict[str, list[str]]:
     """Return {alexa_name: [entity_ids]} for names used by more than one entity.
 

@@ -31,15 +31,15 @@
   "options": {
     "step": {
       "init": {
-        "title": "Manage exposed entities",
-        "description": "Pick a domain to review its entities, or finish to save your changes.",
+        "title": "Choose exposed entities",
+        "description": "Search and pick every entity Alexa should see. You can filter by name, area or domain - nothing is saved until you submit.",
         "data": {
-          "domain": "Domain"
+          "exposed_entities": "Entities exposed to Alexa"
         }
       },
-      "entities_page": {
-        "title": "{domain} (page {page}/{total_pages})",
-        "description": "Toggle which entities are exposed to Alexa and optionally set a custom Alexa name. Leave the name empty to use the entity's Home Assistant name."
+      "names": {
+        "title": "Alexa names (page {page}/{total_pages})",
+        "description": "Optionally give each entity a custom Alexa name. Leave a field empty to keep using the entity's Home Assistant name. Submitting the last page saves everything."
       }
     },
     "error": {

@@ -26,18 +26,6 @@ VALID_CLIENT_ID = CLIENT_ID_PREFIX + "test-fixture-not-a-real-id"
 VALID_CLIENT_SECRET = CLIENT_SECRET_PREFIX + "test-fixture-not-a-real-secret"
 
 
-def test_entities_by_domain_groups_and_sorts(hass: HomeAssistant) -> None:
-    """Entities come back grouped by domain, each list sorted."""
-    hass.states.async_set("light.b", "on")
-    hass.states.async_set("light.a", "on")
-    hass.states.async_set("switch.x", "off")
-
-    grouped = entity_manager.entities_by_domain(hass)
-
-    assert grouped["light"] == ["light.a", "light.b"]
-    assert grouped["switch"] == ["switch.x"]
-
-
 def test_find_duplicate_names_detects_collisions() -> None:
     """Two entities sharing a non-blank name are flagged."""
     duplicates = entity_manager.find_duplicate_names(

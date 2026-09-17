@@ -7,8 +7,10 @@ zu editieren und ohne Neustart von Home Assistant.
 ## Features
 
 - [x] Config Flow: Endpoint (EU/NA/FE/eigene URL), Client ID, Client Secret
-- [x] Options Flow: Entities durchsuchen (paginiert nach Domain), freigeben
-      und für Alexa umbenennen, inkl. Erkennung doppelter Alexa-Namen
+- [x] Options Flow: eine durchsuchbare Entity-Auswahl (HA-natives
+      Multi-Select, filterbar nach Name/Bereich/Domain) statt einer langen
+      Checkbox-Liste, danach optional Alexa-Namen nur für die gewählten
+      Entities vergeben, inkl. Erkennung doppelter Alexa-Namen
 - [x] Sofortige Übernahme der Änderungen ohne HA-Neustart oder Reload
 - [x] Automatischer Alexa-Discovery-Push (`AddOrUpdateReport`/`DeleteReport`)
       wenn sich die Freigabe ändert

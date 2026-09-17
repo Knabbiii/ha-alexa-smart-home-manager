@@ -31,15 +31,15 @@
   "options": {
     "step": {
       "init": {
-        "title": "Freigegebene Entities verwalten",
-        "description": "Wähle eine Domain aus, um deren Entities zu bearbeiten, oder schließe ab, um deine Änderungen zu speichern.",
+        "title": "Freigegebene Entities auswählen",
+        "description": "Suche und wähle alle Entities aus, die Alexa sehen soll. Du kannst nach Name, Bereich oder Domain filtern - gespeichert wird erst beim Absenden.",
         "data": {
-          "domain": "Domain"
+          "exposed_entities": "Für Alexa freigegebene Entities"
         }
       },
-      "entities_page": {
-        "title": "{domain} (Seite {page}/{total_pages})",
-        "description": "Lege fest, welche Entities für Alexa freigegeben werden sollen, und vergib optional einen eigenen Alexa-Namen. Bleibt der Name leer, wird der Home-Assistant-Name verwendet."
+      "names": {
+        "title": "Alexa-Namen (Seite {page}/{total_pages})",
+        "description": "Vergib optional einen eigenen Alexa-Namen pro Entity. Bleibt ein Feld leer, wird weiterhin der Home-Assistant-Name verwendet. Das Absenden der letzten Seite speichert alles."
       }
     },
     "error": {

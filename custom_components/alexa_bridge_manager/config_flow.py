@@ -14,7 +14,8 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers.selector import (
-    BooleanSelector,
+    EntitySelector,
+    EntitySelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -39,8 +40,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-FINISH_SENTINEL = "__finish__"
 
 
 def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
@@ -171,146 +170,120 @@ class AlexaBridgeManagerConfigFlow(ConfigFlow, domain=DOMAIN):
 class AlexaBridgeManagerOptionsFlow(OptionsFlow):
     """Manage which entities are exposed to Alexa, and their Alexa names.
 
-    Navigation is a small state machine kept on `self` across steps:
-    `async_step_init` shows a menu of domains (plus a "finish" choice);
-    picking a domain drops into `async_step_entities_page`, which shows that
-    domain's entities `ENTITIES_PER_PAGE` at a time (so this stays usable
-    with hundreds of entities) and loops itself until the domain is
-    exhausted, then returns to the domain menu. Nothing is written back to
-    the config entry until "finish" is chosen, at which point duplicate
-    Alexa names are rejected.
+    Two steps only, regardless of how many entities exist:
+
+    `async_step_init` shows a single native `EntitySelector` in multi-select
+    mode - a searchable, filterable picker (not a scrolling checkbox list)
+    that already knows every entity's domain and friendly name. Whatever the
+    user picks there becomes the exposed set.
+
+    `async_step_names` then walks *only* that (typically much smaller)
+    selection, `ENTITIES_PER_PAGE` at a time, asking for an optional Alexa
+    name per entity. Submitting the last page is the save - there is no
+    separate "finish" menu to find. If two entities end up sharing a name,
+    the flow loops back to the first naming page with an error instead of
+    creating the entry, so the fix-up happens in the same place the name
+    was set.
     """
 
     def __init__(self) -> None:
         """Initialize with no state - populated on first step_init call."""
-        self._domains: dict[str, list[str]] = {}
-        self._exposed: dict[str, bool] = {}
+        self._selected: list[str] = []
         self._names: dict[str, str] = {}
-        self._current_domain: str | None = None
         self._current_page: int = 0
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show the domain picker, or finish and save."""
-        if not self._domains:
-            self._domains = entity_manager.entities_by_domain(self.hass)
-            exposed_list: list[str] = self.config_entry.options.get(
-                CONF_EXPOSED_ENTITIES, []
-            )
-            self._exposed = {
-                entity_id: entity_id in exposed_list
-                for entity_ids in self._domains.values()
-                for entity_id in entity_ids
-            }
-            self._names = dict(
-                self.config_entry.options.get(CONF_ENTITY_NAMES, {})
-            )
-
-        errors: dict[str, str] = {}
-        description_placeholders: dict[str, str] = {}
-
+        """Let the user pick which entities are exposed to Alexa."""
         if user_input is not None:
-            domain = user_input["domain"]
-
-            if domain == FINISH_SENTINEL:
-                duplicates = entity_manager.find_duplicate_names(self._names)
-                if duplicates:
-                    errors["base"] = "duplicate_names"
-                    description_placeholders["duplicates"] = "; ".join(
-                        f"'{name}': {', '.join(ids)}"
-                        for name, ids in duplicates.items()
-                    )
-                else:
-                    return self.async_create_entry(
-                        title="",
-                        data={
-                            CONF_EXPOSED_ENTITIES: [
-                                entity_id
-                                for entity_id, exposed in self._exposed.items()
-                                if exposed
-                            ],
-                            CONF_ENTITY_NAMES: self._names,
-                        },
-                    )
-            else:
-                self._current_domain = domain
-                self._current_page = 0
-                return await self.async_step_entities_page()
-
-        options = [
-            {
-                "value": domain,
-                "label": (
-                    f"{domain} "
-                    f"({sum(1 for e in entity_ids if self._exposed.get(e))}/"
-                    f"{len(entity_ids)} für Alexa freigegeben)"
-                ),
+            self._selected = user_input[CONF_EXPOSED_ENTITIES]
+            self._names = {
+                entity_id: name
+                for entity_id, name in self.config_entry.options.get(
+                    CONF_ENTITY_NAMES, {}
+                ).items()
+                if entity_id in self._selected
             }
-            for domain, entity_ids in self._domains.items()
-        ]
-        options.append(
-            {"value": FINISH_SENTINEL, "label": "✅ Fertig – Änderungen speichern"}
-        )
+            self._current_page = 0
 
+            if not self._selected:
+                return self.async_create_entry(
+                    title="",
+                    data={CONF_EXPOSED_ENTITIES: [], CONF_ENTITY_NAMES: {}},
+                )
+
+            return await self.async_step_names()
+
+        current_exposed = self.config_entry.options.get(CONF_EXPOSED_ENTITIES, [])
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required("domain"): SelectSelector(
-                        SelectSelectorConfig(
-                            options=options, mode=SelectSelectorMode.LIST
-                        )
-                    ),
+                    vol.Required(
+                        CONF_EXPOSED_ENTITIES, default=current_exposed
+                    ): EntitySelector(EntitySelectorConfig(multiple=True)),
                 }
             ),
-            errors=errors,
-            description_placeholders=description_placeholders,
         )
 
-    async def async_step_entities_page(
+    async def async_step_names(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Show one page of entities for the currently selected domain."""
-        assert self._current_domain is not None
-        entity_ids = self._domains[self._current_domain]
+        """Ask for an optional Alexa name, one page of entities at a time."""
         start = self._current_page * ENTITIES_PER_PAGE
-        page_ids = entity_ids[start : start + ENTITIES_PER_PAGE]
+        page_ids = self._selected[start : start + ENTITIES_PER_PAGE]
+        errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             for entity_id in page_ids:
-                self._exposed[entity_id] = bool(user_input.get(entity_id, False))
-                name = str(user_input.get(f"{entity_id}_name", "")).strip()
+                name = str(user_input.get(entity_id, "")).strip()
                 if name:
                     self._names[entity_id] = name
                 else:
                     self._names.pop(entity_id, None)
 
-            if start + ENTITIES_PER_PAGE < len(entity_ids):
+            if start + ENTITIES_PER_PAGE < len(self._selected):
                 self._current_page += 1
-                return await self.async_step_entities_page()
+                return await self.async_step_names()
 
-            return await self.async_step_init()
-
-        schema_dict: dict[Any, Any] = {}
-        for entity_id in page_ids:
-            schema_dict[
-                vol.Optional(entity_id, default=self._exposed.get(entity_id, False))
-            ] = BooleanSelector()
-            schema_dict[
-                vol.Optional(
-                    f"{entity_id}_name", default=self._names.get(entity_id, "")
+            duplicates = entity_manager.find_duplicate_names(self._names)
+            if not duplicates:
+                return self.async_create_entry(
+                    title="",
+                    data={
+                        CONF_EXPOSED_ENTITIES: self._selected,
+                        CONF_ENTITY_NAMES: self._names,
+                    },
                 )
-            ] = TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT))
 
-        total_pages = max(1, -(-len(entity_ids) // ENTITIES_PER_PAGE))
+            # Loop back to the first page so the fix-up happens where the
+            # names were entered, instead of a separate summary/error page.
+            self._current_page = 0
+            start = 0
+            page_ids = self._selected[0:ENTITIES_PER_PAGE]
+            errors["base"] = "duplicate_names"
+            description_placeholders["duplicates"] = "; ".join(
+                f"'{name}': {', '.join(ids)}" for name, ids in duplicates.items()
+            )
+
+        schema_dict: dict[Any, Any] = {
+            vol.Optional(
+                entity_id, default=self._names.get(entity_id, "")
+            ): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT))
+            for entity_id in page_ids
+        }
+
+        total_pages = max(1, -(-len(self._selected) // ENTITIES_PER_PAGE))
 
         return self.async_show_form(
-            step_id="entities_page",
+            step_id="names",
             data_schema=vol.Schema(schema_dict),
+            errors=errors,
             description_placeholders={
-                "domain": self._current_domain,
                 "page": str(self._current_page + 1),
                 "total_pages": str(total_pages),
+                **description_placeholders,
             },
         )

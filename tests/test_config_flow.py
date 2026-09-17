@@ -158,7 +158,7 @@ async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
 
 
 async def test_options_flow_expose_and_name_entity(hass: HomeAssistant) -> None:
-    """Toggling an entity on and naming it saves into the options."""
+    """Picking an entity in the selector and naming it saves into the options."""
     entry = await _setup_entry(hass)
     hass.states.async_set("light.donut_led", "on", {"friendly_name": "Donut LED"})
 
@@ -167,25 +167,32 @@ async def test_options_flow_expose_and_name_entity(hass: HomeAssistant) -> None:
     assert result["step_id"] == "init"
 
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"domain": "light"}
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: ["light.donut_led"]}
     )
     assert result["type"] is data_entry_flow.FlowResultType.FORM
-    assert result["step_id"] == "entities_page"
+    assert result["step_id"] == "names"
 
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {"light.donut_led": True, "light.donut_led_name": "Donut"},
-    )
-    # Back to the domain menu.
-    assert result["type"] is data_entry_flow.FlowResultType.FORM
-    assert result["step_id"] == "init"
-
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"domain": "__finish__"}
+        result["flow_id"], {"light.donut_led": "Donut"}
     )
     assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_EXPOSED_ENTITIES] == ["light.donut_led"]
     assert result["data"][CONF_ENTITY_NAMES] == {"light.donut_led": "Donut"}
+
+
+async def test_options_flow_no_entities_selected_saves_empty(
+    hass: HomeAssistant,
+) -> None:
+    """Submitting the selector with nothing picked skips straight to saving."""
+    entry = await _setup_entry(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: []}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_EXPOSED_ENTITIES] == []
+    assert result["data"][CONF_ENTITY_NAMES] == {}
 
 
 async def test_options_flow_rejects_duplicate_names(hass: HomeAssistant) -> None:
@@ -196,20 +203,61 @@ async def test_options_flow_rejects_duplicate_names(hass: HomeAssistant) -> None
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"domain": "light"}
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: ["light.a", "light.b"]}
     )
+    assert result["step_id"] == "names"
+
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        {
-            "light.a": True,
-            "light.a_name": "Lampe",
-            "light.b": True,
-            "light.b_name": "Lampe",
-        },
-    )
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"domain": "__finish__"}
+        result["flow_id"], {"light.a": "Lampe", "light.b": "Lampe"}
     )
     assert result["type"] is data_entry_flow.FlowResultType.FORM
-    assert result["step_id"] == "init"
+    assert result["step_id"] == "names"
     assert result["errors"]["base"] == "duplicate_names"
+
+    # Fixing the collision on the same (looped-back) page now saves fine.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"light.a": "Lampe", "light.b": "Andere Lampe"}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_ENTITY_NAMES] == {
+        "light.a": "Lampe",
+        "light.b": "Andere Lampe",
+    }
+
+
+async def test_options_flow_paginates_names_across_many_entities(
+    hass: HomeAssistant,
+) -> None:
+    """More than one page of selected entities are asked for one page at a time."""
+    entry = await _setup_entry(hass)
+    entity_ids = [f"light.l{i}" for i in range(12)]
+    for entity_id in entity_ids:
+        hass.states.async_set(entity_id, "on")
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: entity_ids}
+    )
+    assert result["step_id"] == "names"
+    assert result["description_placeholders"]["page"] == "1"
+    assert result["description_placeholders"]["total_pages"] == "2"
+
+    # First page (10 entities) - leave all names blank.
+    first_page_fields = {
+        str(key) for key in result["data_schema"].schema.keys()
+    }
+    assert len(first_page_fields) == 10
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "names"
+    assert result["description_placeholders"]["page"] == "2"
+
+    # Second (final) page - remaining 2 entities.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_EXPOSED_ENTITIES] == entity_ids

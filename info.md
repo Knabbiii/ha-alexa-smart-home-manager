@@ -9,6 +9,7 @@ läuft nicht parallel dazu. Details siehe README.
 
 ### Features
 - Ersteinrichtung per Config Flow (Endpoint/Client ID/Client Secret)
-- Entity-Freigabe & Alexa-Namen per Options Flow, paginiert nach Domain
+- Entity-Freigabe per durchsuchbarem Multi-Select, Alexa-Namen nur für die
+  gewählten Entities vergeben
 - Änderungen wirken sofort, inkl. automatischem Alexa-Discovery-Push
 - Diagnostics-Karte mit Übersicht der freigegebenen Entities
