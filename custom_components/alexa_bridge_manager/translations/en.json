@@ -43,7 +43,8 @@
       }
     },
     "error": {
-      "duplicate_names": "Some Alexa names are used more than once, Alexa cannot tell them apart: {duplicates}"
+      "duplicate_names": "Some Alexa names are used more than once, Alexa cannot tell them apart: {duplicates}",
+      "overlapping_names": "Some Alexa names are fully contained in another (e.g. 'TV' in 'TV Licht'). This is a real Alexa voice-recognition limitation, not a bug here - please make the names more distinct: {overlaps}"
     }
   },
   "selector": {

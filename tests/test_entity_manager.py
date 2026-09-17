@@ -48,6 +48,38 @@ def test_find_duplicate_names_ignores_blank() -> None:
     assert duplicates == {}
 
 
+def test_find_overlapping_names_detects_substring() -> None:
+    """A name fully contained in another (as a whole word) is flagged.
+
+    Reproduces a real report: naming a switch "TV" and a light "TV Licht"
+    made Alexa unable to voice-recognize the light at all - a genuine Alexa
+    limitation, not something Home Assistant controls, but something this
+    validation can catch before it ever reaches Alexa.
+    """
+    overlaps = entity_manager.find_overlapping_names(
+        {"switch.tv": "TV", "light.tv_led": "TV Licht"}
+    )
+    assert overlaps == [("switch.tv", "TV", "light.tv_led", "TV Licht")]
+
+
+def test_find_overlapping_names_ignores_exact_duplicates() -> None:
+    """Exact duplicates are left to find_duplicate_names, not reported twice."""
+    overlaps = entity_manager.find_overlapping_names(
+        {"light.a": "Lampe", "light.b": "Lampe"}
+    )
+    assert overlaps == []
+
+
+def test_find_overlapping_names_ignores_partial_word_matches() -> None:
+    """A name that is only a substring within a single word (not a whole
+    word on its own) is not flagged - "TV" inside "TVzimmer" has no word
+    boundary after it, unlike "TV" inside "TV Zimmer"."""
+    overlaps = entity_manager.find_overlapping_names(
+        {"switch.tv": "TV", "light.other": "TVzimmer"}
+    )
+    assert overlaps == []
+
+
 def _make_entry(hass: HomeAssistant, options: dict | None = None) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,

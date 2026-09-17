@@ -215,13 +215,50 @@ async def test_options_flow_rejects_duplicate_names(hass: HomeAssistant) -> None
     assert result["errors"]["base"] == "duplicate_names"
 
     # Fixing the collision on the same (looped-back) page now saves fine.
+    # ("Deckenleuchte" is used rather than e.g. "Andere Lampe" - the latter
+    # would still contain "Lampe" as a whole word and trip the separate
+    # overlapping-names check.)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"light.a": "Lampe", "light.b": "Andere Lampe"}
+        result["flow_id"], {"light.a": "Lampe", "light.b": "Deckenleuchte"}
     )
     assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_ENTITY_NAMES] == {
         "light.a": "Lampe",
-        "light.b": "Andere Lampe",
+        "light.b": "Deckenleuchte",
+    }
+
+
+async def test_options_flow_rejects_overlapping_names(hass: HomeAssistant) -> None:
+    """Naming a switch 'TV' and a light 'TV Licht' is rejected as ambiguous.
+
+    Reproduces the reported real-world failure: Alexa could not voice-match
+    the light at all once its name fully contained the other device's name.
+    """
+    entry = await _setup_entry(hass)
+    hass.states.async_set("switch.tv", "on", {"friendly_name": "TV"})
+    hass.states.async_set("light.tv_led", "on", {"friendly_name": "TV LED"})
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: ["switch.tv", "light.tv_led"]}
+    )
+    assert result["step_id"] == "names"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"switch.tv": "TV", "light.tv_led": "TV Licht"}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "names"
+    assert result["errors"]["base"] == "overlapping_names"
+
+    # Making the names distinct now saves fine.
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"switch.tv": "TV", "light.tv_led": "Raumschiff"}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_ENTITY_NAMES] == {
+        "switch.tv": "TV",
+        "light.tv_led": "Raumschiff",
     }
 
 

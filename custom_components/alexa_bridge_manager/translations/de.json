@@ -43,7 +43,8 @@
       }
     },
     "error": {
-      "duplicate_names": "Manche Alexa-Namen werden mehrfach verwendet, Alexa kann sie nicht unterscheiden: {duplicates}"
+      "duplicate_names": "Manche Alexa-Namen werden mehrfach verwendet, Alexa kann sie nicht unterscheiden: {duplicates}",
+      "overlapping_names": "Manche Alexa-Namen sind vollständig in einem anderen enthalten (z. B. 'TV' in 'TV Licht'). Das ist eine echte Einschränkung von Alexas Spracherkennung, kein Fehler dieser Integration - bitte mach die Namen eindeutiger: {overlaps}"
     }
   },
   "selector": {
