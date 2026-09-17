@@ -249,8 +249,7 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
                 return await self.async_step_names()
 
             duplicates = entity_manager.find_duplicate_names(self._names)
-            overlaps = entity_manager.find_overlapping_names(self._names)
-            if not duplicates and not overlaps:
+            if not duplicates:
                 return self.async_create_entry(
                     title="",
                     data={
@@ -264,17 +263,10 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
             self._current_page = 0
             start = 0
             page_ids = self._selected[0:ENTITIES_PER_PAGE]
-            if duplicates:
-                errors["base"] = "duplicate_names"
-                description_placeholders["duplicates"] = "; ".join(
-                    f"'{name}': {', '.join(ids)}" for name, ids in duplicates.items()
-                )
-            else:
-                errors["base"] = "overlapping_names"
-                description_placeholders["overlaps"] = "; ".join(
-                    f"'{shorter}' in '{longer}'"
-                    for _shorter_id, shorter, _longer_id, longer in overlaps
-                )
+            errors["base"] = "duplicate_names"
+            description_placeholders["duplicates"] = "; ".join(
+                f"'{name}': {', '.join(ids)}" for name, ids in duplicates.items()
+            )
 
         schema_dict: dict[Any, Any] = {
             vol.Optional(

@@ -10,10 +10,7 @@ zu editieren und ohne Neustart von Home Assistant.
 - [x] Options Flow: eine durchsuchbare Entity-Auswahl (HA-natives
       Multi-Select, filterbar nach Name/Bereich/Domain) statt einer langen
       Checkbox-Liste, danach optional Alexa-Namen nur für die gewählten
-      Entities vergeben, inkl. Erkennung doppelter **und ineinander
-      enthaltener** Alexa-Namen (z. B. "TV" in "TV Licht") - Letzteres ist
-      eine echte Alexa-Spracherkennungs-Einschränkung, keine Erfindung
-      dieser Integration
+      Entities vergeben, inkl. Erkennung doppelter Alexa-Namen
 - [x] Sofortige Übernahme der Änderungen ohne HA-Neustart oder Reload
 - [x] Automatischer Alexa-Discovery-Push (`AddOrUpdateReport`/`DeleteReport`)
       wenn sich Freigabe **oder Alexa-Name** ändert

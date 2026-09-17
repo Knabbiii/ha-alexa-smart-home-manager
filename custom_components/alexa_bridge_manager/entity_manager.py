@@ -39,7 +39,6 @@ config-entry-backed:
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
 
 from yarl import URL
@@ -349,35 +348,3 @@ def find_duplicate_names(entity_names: dict[str, str]) -> dict[str, list[str]]:
             continue
         by_name.setdefault(normalized, []).append(entity_id)
     return {name: ids for name, ids in by_name.items() if len(ids) > 1}
-
-
-def find_overlapping_names(
-    entity_names: dict[str, str],
-) -> list[tuple[str, str, str, str]]:
-    """Return (shorter_entity, shorter_name, longer_entity, longer_name)
-    tuples where one name is fully contained, as whole words, in another -
-    e.g. "TV" and "TV Licht".
-
-    This is a real Alexa limitation, not a Home Assistant one: Alexa's own
-    voice-recognition matching can fail to tell such names apart, so the
-    shorter-named device may stop responding to voice commands even though
-    discovery reported both successfully. Exact duplicates are skipped here
-    since `find_duplicate_names` already reports those separately.
-    """
-    named = sorted(
-        (
-            (entity_id, name.strip())
-            for entity_id, name in entity_names.items()
-            if name.strip()
-        ),
-        key=lambda pair: len(pair[1]),
-    )
-    overlaps: list[tuple[str, str, str, str]] = []
-    for i, (shorter_entity, shorter_name) in enumerate(named):
-        pattern = re.compile(r"\b" + re.escape(shorter_name.lower()) + r"\b")
-        for longer_entity, longer_name in named[i + 1 :]:
-            if shorter_name.lower() == longer_name.lower():
-                continue
-            if pattern.search(longer_name.lower()):
-                overlaps.append((shorter_entity, shorter_name, longer_entity, longer_name))
-    return overlaps
