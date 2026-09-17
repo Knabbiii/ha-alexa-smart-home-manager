@@ -15,6 +15,7 @@ from custom_components.alexa_bridge_manager.const import (
     CONF_ENTITY_NAMES,
     CONF_EXPOSED_ENTITIES,
     DATA_LAST_EXPOSED,
+    DATA_LAST_NAMES,
     DATA_RUNTIME_CONFIG,
     DOMAIN,
     ENDPOINT_EU,
@@ -150,6 +151,54 @@ async def test_sync_discovery_sends_add_and_delete(hass: HomeAssistant) -> None:
     mock_add.assert_awaited_once_with(hass, config, ["light.a"])
     mock_delete.assert_awaited_once_with(hass, config, ["light.old"])
     assert domain_data[DATA_LAST_EXPOSED][entry.entry_id] == ["light.a"]
+
+
+async def test_sync_discovery_sends_update_on_rename_alone(
+    hass: HomeAssistant,
+) -> None:
+    """Renaming an already-exposed entity re-sends AddOrUpdate even though
+    the exposed set itself did not change.
+
+    Regression test: an earlier version of async_sync_discovery only diffed
+    entity-ID set membership, so editing just the Alexa name of an entity
+    that was already exposed never triggered a new discovery push - Alexa
+    kept the old name forever until the entity was toggled off and on again.
+    """
+    entry = _make_entry(
+        hass,
+        {
+            CONF_EXPOSED_ENTITIES: ["light.tv_led"],
+            CONF_ENTITY_NAMES: {"light.tv_led": "TV Licht"},
+        },
+    )
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    domain_data[DATA_RUNTIME_CONFIG] = config
+    # Already synced once before, under the entity's old name.
+    domain_data[DATA_LAST_EXPOSED] = {entry.entry_id: ["light.tv_led"]}
+    domain_data[DATA_LAST_NAMES] = {
+        entry.entry_id: {"light.tv_led": "TV LED Beleuchtung"}
+    }
+
+    with patch.object(
+        entity_manager.AlexaBridgeManagerConfig,
+        "authorized",
+        new_callable=lambda: property(lambda self: True),
+    ), patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
+        new=AsyncMock(),
+    ) as mock_add, patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_delete_message",
+        new=AsyncMock(),
+    ) as mock_delete:
+        await entity_manager.async_sync_discovery(hass, entry)
+
+    mock_add.assert_awaited_once_with(hass, config, ["light.tv_led"])
+    mock_delete.assert_not_awaited()
+    assert domain_data[DATA_LAST_NAMES][entry.entry_id] == {
+        "light.tv_led": "TV Licht"
+    }
 
 
 async def test_sync_discovery_skips_when_not_authorized(hass: HomeAssistant) -> None:

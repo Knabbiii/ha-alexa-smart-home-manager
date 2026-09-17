@@ -13,7 +13,7 @@ zu editieren und ohne Neustart von Home Assistant.
       Entities vergeben, inkl. Erkennung doppelter Alexa-Namen
 - [x] Sofortige Übernahme der Änderungen ohne HA-Neustart oder Reload
 - [x] Automatischer Alexa-Discovery-Push (`AddOrUpdateReport`/`DeleteReport`)
-      wenn sich die Freigabe ändert
+      wenn sich Freigabe **oder Alexa-Name** ändert
 - [x] Diagnostics-Karte mit Anzahl freigegebener/benannter Entities
       (Secrets maskiert)
 

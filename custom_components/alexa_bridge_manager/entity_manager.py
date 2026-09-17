@@ -63,6 +63,7 @@ from .const import (
     CONF_ENTITY_NAMES,
     CONF_EXPOSED_ENTITIES,
     DATA_LAST_EXPOSED,
+    DATA_LAST_NAMES,
     DATA_RUNTIME_CONFIG,
     DEFAULT_LOCALE,
     DOMAIN,
@@ -243,16 +244,25 @@ async def async_teardown_runtime(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await config.async_disable_proactive_mode()
     config.unbind()
     domain_data.pop(DATA_LAST_EXPOSED, None)
+    domain_data.pop(DATA_LAST_NAMES, None)
 
 
 async def async_sync_discovery(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Push an Alexa discovery update after the exposed entities changed.
+    """Push an Alexa discovery update after exposure or naming changed.
 
     Alexa (unlike Google Assistant) does not pick up newly exposed entities
-    on its own; a proactive `AddOrUpdateReport`/`DeleteReport` discovery
-    event needs to be sent to Amazon's event gateway. This diffs the newly
-    saved `exposed_entities` option against what we last synced and sends
-    the appropriate message for the entities that changed.
+    - or renamed ones - on its own; a proactive `AddOrUpdateReport`/
+    `DeleteReport` discovery event needs to be sent to Amazon's event
+    gateway. This diffs both the newly saved `exposed_entities` *and*
+    `entity_names` options against what was last synced: newly exposed
+    entities and entities whose Alexa name changed both need an
+    `AddOrUpdateReport` (Amazon treats it as an upsert keyed by endpoint ID,
+    so resending an already-known entity just updates its name), while
+    entities that dropped out of the exposed set need a `DeleteReport`.
+    Only comparing entity-ID set membership - as an earlier version of this
+    function did - misses pure renames: the exposed set does not change
+    when you just edit a name, so no update would ever reach Amazon and the
+    old name would keep being the only one Alexa recognizes.
 
     Best-effort: if the skill has not completed Alexa account linking yet
     (`config.authorized` is False), or the request to Amazon fails, this
@@ -265,22 +275,33 @@ async def async_sync_discovery(hass: HomeAssistant, entry: ConfigEntry) -> None:
         return
 
     last_exposed: dict[str, list[str]] = domain_data.setdefault(DATA_LAST_EXPOSED, {})
-    previous = set(last_exposed.get(entry.entry_id, []))
-    current = set(entry.options.get(CONF_EXPOSED_ENTITIES, []))
+    last_names: dict[str, dict[str, str]] = domain_data.setdefault(DATA_LAST_NAMES, {})
 
-    added = current - previous
-    removed = previous - current
+    previous_exposed = set(last_exposed.get(entry.entry_id, []))
+    current_exposed = set(entry.options.get(CONF_EXPOSED_ENTITIES, []))
+    previous_names = last_names.get(entry.entry_id, {})
+    current_names: dict[str, str] = entry.options.get(CONF_ENTITY_NAMES, {})
+
+    newly_exposed = current_exposed - previous_exposed
+    removed = previous_exposed - current_exposed
+    renamed = {
+        entity_id
+        for entity_id in current_exposed & previous_exposed
+        if current_names.get(entity_id, "") != previous_names.get(entity_id, "")
+    }
+    to_upsert = newly_exposed | renamed
 
     try:
-        if added:
-            await async_send_add_or_update_message(hass, config, list(added))
+        if to_upsert:
+            await async_send_add_or_update_message(hass, config, list(to_upsert))
         if removed:
             await async_send_delete_message(hass, config, list(removed))
     except Exception:  # noqa: BLE001 - network call to Amazon, must not crash
         _LOGGER.warning("Failed to sync Alexa discovery state", exc_info=True)
         return
 
-    last_exposed[entry.entry_id] = list(current)
+    last_exposed[entry.entry_id] = list(current_exposed)
+    last_names[entry.entry_id] = dict(current_names)
 
 
 def find_duplicate_names(entity_names: dict[str, str]) -> dict[str, list[str]]:

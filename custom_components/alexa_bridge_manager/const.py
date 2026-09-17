@@ -38,6 +38,7 @@ DEFAULT_LOCALE = "de-DE"
 # Keys used inside hass.data[DOMAIN]
 DATA_RUNTIME_CONFIG = "runtime_config"
 DATA_LAST_EXPOSED = "last_exposed"
+DATA_LAST_NAMES = "last_names"
 
 # Repair issue raised when the manual `alexa: smart_home:` YAML block already
 # owns the /api/alexa/smart_home endpoint (see entity_manager.py).
