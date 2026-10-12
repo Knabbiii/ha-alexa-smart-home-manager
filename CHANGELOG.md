@@ -3,7 +3,7 @@
 Every version lists its changes as `New:`, `Changed:`, `Fixed:` or `Removed:`.
 The same lines are used as the release notes HACS shows in Home Assistant.
 
-## 0.5.0
+## 1.0.0
 
 - New: Reconfigure flow. Change the event gateway or credentials without removing the integration, which would make Alexa forget every device.
 - New: "Alexa linked" and "Sync status" diagnostic entities, and a "Resync with Alexa" button that resends every exposed entity.
