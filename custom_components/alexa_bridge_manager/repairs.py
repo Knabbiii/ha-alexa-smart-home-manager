@@ -1,4 +1,4 @@
-"""Repair flows for Alexa Bridge Manager."""
+"""Repair flows for Alexa Smart Home Manager."""
 from __future__ import annotations
 
 from homeassistant import data_entry_flow

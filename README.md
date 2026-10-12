@@ -1,4 +1,4 @@
-# Alexa Bridge Manager
+# Alexa Smart Home Manager
 
 Manage which entities Alexa can see from the Home Assistant UI, for people who
 run their own Alexa Smart Home skill.
@@ -69,7 +69,7 @@ because they are not imported.
 1. HACS → three dots → **Custom repositories**
 2. Add `https://github.com/Knabbiii/alexa_bridge_manager` as category
    **Integration**
-3. Install **Alexa Bridge Manager** and restart Home Assistant
+3. Install **Alexa Smart Home Manager** and restart Home Assistant
 
 ### Manual
 
@@ -78,7 +78,7 @@ folder of your Home Assistant configuration and restart.
 
 ## Setup
 
-1. Settings → Devices & services → Add integration → **Alexa Bridge Manager**
+1. Settings → Devices & services → Add integration → **Alexa Smart Home Manager**
 2. Pick your Alexa region and enter the Client ID and Client secret.
    For a gateway that isn't listed, choose *Custom URL*.
 3. In the Alexa app, enable or re-link your skill. Linking is what lets Home
@@ -94,11 +94,11 @@ If a device doesn't show up in Alexa, check the sync status entity and press
 
 | Entity | Description |
 | --- | --- |
-| `binary_sensor.alexa_bridge_manager_alexa_linked` | On once Alexa has completed account linking |
-| `sensor.alexa_bridge_manager_sync_status` | `not_linked`, `pending`, `synced` or `error`, with `last_success` and `last_error` attributes |
-| `button.alexa_bridge_manager_resync_with_alexa` | Resends every exposed entity to Alexa |
+| `binary_sensor.alexa_smart_home_manager_alexa_linked` | On once Alexa has completed account linking |
+| `sensor.alexa_smart_home_manager_sync_status` | `not_linked`, `pending`, `synced` or `error`, with `last_success` and `last_error` attributes |
+| `button.alexa_smart_home_manager_resync_with_alexa` | Resends every exposed entity to Alexa |
 
-Entity IDs may differ slightly depending on your Home Assistant language.
+Entity IDs are derived from the device name. If you set up an earlier version (when the integration was called Alexa Bridge Manager), yours start with `alexa_bridge_manager_` instead.
 
 ## Changing credentials
 

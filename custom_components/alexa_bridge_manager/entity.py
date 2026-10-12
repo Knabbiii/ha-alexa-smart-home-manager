@@ -1,4 +1,4 @@
-"""Shared base entity for Alexa Bridge Manager."""
+"""Shared base entity for Alexa Smart Home Manager."""
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -23,7 +23,7 @@ class AlexaBridgeManagerEntity(Entity):
         self._attr_translation_key = key
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name="Alexa Bridge Manager",
+            name="Alexa Smart Home Manager",
             entry_type=DeviceEntryType.SERVICE,
         )
 

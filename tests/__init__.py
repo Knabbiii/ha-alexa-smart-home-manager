@@ -1,1 +1,1 @@
-"""Tests for the Alexa Bridge Manager integration."""
+"""Tests for the Alexa Smart Home Manager integration."""

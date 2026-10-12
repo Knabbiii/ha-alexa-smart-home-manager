@@ -1,4 +1,4 @@
-"""Config flow for the Alexa Bridge Manager integration."""
+"""Config flow for the Alexa Smart Home Manager integration."""
 from __future__ import annotations
 
 import logging
@@ -200,7 +200,7 @@ class AlexaBridgeManagerConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         return self.async_create_entry(
-            title="Alexa Bridge Manager",
+            title="Alexa Smart Home Manager",
             data=self._data,
         )
 

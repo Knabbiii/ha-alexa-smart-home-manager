@@ -1,6 +1,6 @@
 {
   "domain": "alexa_bridge_manager",
-  "name": "Alexa Bridge Manager",
+  "name": "Alexa Smart Home Manager",
   "codeowners": ["@Knabbiii"],
   "config_flow": true,
   "dependencies": ["alexa", "http"],

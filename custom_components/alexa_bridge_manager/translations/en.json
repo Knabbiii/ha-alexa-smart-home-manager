@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Set up Alexa Bridge Manager",
+        "title": "Set up Alexa Smart Home Manager",
         "description": "Enter the Client ID and Client secret of your Alexa Smart Home skill. You find them in the Alexa Developer Console under Build → Permissions → Alexa Skill Messaging, not under Account Linking.",
         "data": {
           "endpoint": "Alexa event gateway",
@@ -11,7 +11,7 @@
         }
       },
       "reconfigure": {
-        "title": "Reconfigure Alexa Bridge Manager",
+        "title": "Reconfigure Alexa Smart Home Manager",
         "description": "Change the event gateway or the Alexa Skill Messaging credentials. Exposed entities and names are kept. If you switch to a different skill, link it again in the Alexa app.",
         "data": {
           "endpoint": "Alexa event gateway",
@@ -34,7 +34,7 @@
     },
     "abort": {
       "already_configured": "This Alexa skill connection is already configured.",
-      "single_instance_allowed": "Only one Alexa Bridge Manager instance is supported.",
+      "single_instance_allowed": "Only one Alexa Smart Home Manager instance is supported.",
       "reconfigure_successful": "Settings updated."
     }
   },

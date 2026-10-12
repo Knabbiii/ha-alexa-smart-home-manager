@@ -1,4 +1,4 @@
-"""Constants for the Alexa Bridge Manager integration."""
+"""Constants for the Alexa Smart Home Manager integration."""
 from __future__ import annotations
 
 DOMAIN = "alexa_bridge_manager"

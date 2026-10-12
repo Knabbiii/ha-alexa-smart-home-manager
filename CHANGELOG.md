@@ -2,6 +2,11 @@
 
 ## 0.5.0
 
+### Renamed
+- The integration is now called **Alexa Smart Home Manager** (previously
+  Alexa Bridge Manager). Only the display name changed: the domain, existing
+  entities and settings are untouched.
+
 ### Added
 - Reconfigure flow: change the event gateway or credentials without removing
   the integration (removing it makes Alexa forget every device).

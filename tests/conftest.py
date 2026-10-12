@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for the Alexa Bridge Manager test suite."""
+"""Shared pytest fixtures for the Alexa Smart Home Manager test suite."""
 import pytest
 
 pytest_plugins = "pytest_homeassistant_custom_component"

@@ -1,6 +1,6 @@
-"""Diagnostics support for Alexa Bridge Manager.
+"""Diagnostics support for Alexa Smart Home Manager.
 
-Settings -> Devices & services -> Alexa Bridge Manager -> the entry's "..."
+Settings -> Devices & services -> Alexa Smart Home Manager -> the entry's "..."
 menu -> Download diagnostics.
 """
 from __future__ import annotations

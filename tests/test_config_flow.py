@@ -1,4 +1,4 @@
-"""Tests for the Alexa Bridge Manager config and options flow."""
+"""Tests for the Alexa Smart Home Manager config and options flow."""
 from unittest.mock import patch
 
 from homeassistant import config_entries, data_entry_flow

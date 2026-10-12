@@ -1,4 +1,4 @@
-"""The Alexa Bridge Manager integration.
+"""The Alexa Smart Home Manager integration.
 
 Sets up a config-entry-backed replacement for the manual
 `alexa: smart_home:` YAML configuration (see entity_manager.py for why and
@@ -25,7 +25,7 @@ PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.S
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Alexa Bridge Manager from a config entry."""
+    """Set up Alexa Smart Home Manager from a config entry."""
     try:
         await entity_manager.async_setup_runtime(hass, entry)
     except entity_manager.SmartHomeEndpointConflict:
@@ -38,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             translation_key=ISSUE_SMART_HOME_CONFLICT,
         )
         _LOGGER.error(
-            "Cannot set up Alexa Bridge Manager: /api/alexa/smart_home is "
+            "Cannot set up Alexa Smart Home Manager: /api/alexa/smart_home is "
             "already registered, likely by an `alexa: smart_home:` block in "
             "configuration.yaml. Remove it, then restart Home Assistant"
         )
