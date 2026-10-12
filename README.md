@@ -66,6 +66,10 @@ because they are not imported.
 
 ### HACS
 
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Knabbiii&repository=alexa_bridge_manager&category=integration)
+
+The button adds the repository to HACS for you. To do it by hand:
+
 1. HACS → three dots → **Custom repositories**
 2. Add `https://github.com/Knabbiii/alexa_bridge_manager` as category
    **Integration**
@@ -77,6 +81,8 @@ Copy `custom_components/alexa_bridge_manager` into the `custom_components`
 folder of your Home Assistant configuration and restart.
 
 ## Setup
+
+[![Open your Home Assistant instance and start setting up this integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=alexa_bridge_manager)
 
 1. Settings → Devices & services → Add integration → **Alexa Smart Home Manager**
 2. Pick your Alexa region and enter the Client ID and Client secret.
