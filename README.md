@@ -87,6 +87,8 @@ folder of your Home Assistant configuration and restart.
 4. Open **Configure** on the integration, pick entities, optionally name them,
    and save.
 
+![Choosing the entities exposed to Alexa](images/entity-picker.png)
+
 If a device doesn't show up in Alexa, check the sync status entity and press
 **Resync with Alexa**.
 
@@ -98,13 +100,17 @@ If a device doesn't show up in Alexa, check the sync status entity and press
 | `sensor.alexa_smart_home_manager_sync_status` | `not_linked`, `pending`, `synced` or `error`, with `last_success` and `last_error` attributes |
 | `button.alexa_smart_home_manager_resync_with_alexa` | Resends every exposed entity to Alexa |
 
-Entity IDs are derived from the device name. If you set up an earlier version (when the integration was called Alexa Bridge Manager), yours start with `alexa_bridge_manager_` instead.
+![Configuration and diagnostic entities on the device page](images/device.png)
+
+Entity IDs are derived from the device name. On older installations they start with `alexa_bridge_manager_`.
 
 ## Changing credentials
 
 Use **Reconfigure** in the integration's menu to change region, Client ID or
 Client secret. Don't delete and re-add the integration: removing it tells Alexa
 to forget all exposed devices.
+
+![Reconfigure dialog](images/reconfigure.png)
 
 ## Known limitations
 
