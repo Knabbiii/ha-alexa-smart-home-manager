@@ -16,6 +16,7 @@ from custom_components.alexa_bridge_manager.const import (
     DOMAIN,
     ENDPOINT_CUSTOM,
     ENDPOINT_EU,
+    ENDPOINT_NA,
 )
 
 # Built from the prefix constant at runtime (not a literal secret-shaped
@@ -261,3 +262,108 @@ async def test_options_flow_paginates_names_across_many_entities(
     )
     assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_EXPOSED_ENTITIES] == entity_ids
+
+
+async def test_custom_endpoint_validates_credentials_first(
+    hass: HomeAssistant,
+) -> None:
+    """A bad client ID is reported on the form that has the client ID field."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_ENDPOINT: ENDPOINT_CUSTOM,
+            CONF_CLIENT_ID: "not-a-valid-client-id",
+            CONF_CLIENT_SECRET: VALID_CLIENT_SECRET,
+        },
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"][CONF_CLIENT_ID] == "invalid_client_id"
+
+
+async def test_reconfigure_updates_credentials(hass: HomeAssistant) -> None:
+    """Reconfigure swaps credentials in place and keeps the options."""
+    entry = await _setup_entry(hass)
+    hass.config_entries.async_update_entry(
+        entry, options={CONF_EXPOSED_ENTITIES: ["light.a"]}
+    )
+
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["type"] is data_entry_flow.FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+
+    new_secret = CLIENT_SECRET_PREFIX + "rotated-test-secret"
+    with patch(
+        "custom_components.alexa_bridge_manager.async_setup_entry", return_value=True
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_ENDPOINT: ENDPOINT_NA,
+                CONF_CLIENT_ID: VALID_CLIENT_ID,
+                CONF_CLIENT_SECRET: new_secret,
+            },
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] is data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_ENDPOINT] == ENDPOINT_NA
+    assert entry.data[CONF_CLIENT_SECRET] == new_secret
+    assert entry.options[CONF_EXPOSED_ENTITIES] == ["light.a"]
+
+
+async def test_options_flow_rejects_same_name_ignoring_case(
+    hass: HomeAssistant,
+) -> None:
+    """'Lampe' and 'lampe' are the same name to Alexa."""
+    entry = await _setup_entry(hass)
+    hass.states.async_set("light.a", "on", {"friendly_name": "A"})
+    hass.states.async_set("light.b", "on", {"friendly_name": "B"})
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: ["light.a", "light.b"]}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"light.a": "Lampe", "light.b": "lampe"}
+    )
+    assert result["errors"]["base"] == "duplicate_names"
+
+
+async def test_options_flow_allows_similar_names(hass: HomeAssistant) -> None:
+    """Names that only contain each other are accepted."""
+    entry = await _setup_entry(hass)
+    hass.states.async_set("light.a", "on", {"friendly_name": "A"})
+    hass.states.async_set("light.b", "on", {"friendly_name": "B"})
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: ["light.a", "light.b"]}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"light.a": "Lamp", "light.b": "Floor Lamp"}
+    )
+    assert result["type"] is data_entry_flow.FlowResultType.CREATE_ENTRY
+
+
+async def test_options_flow_custom_name_clashing_with_home_assistant_name(
+    hass: HomeAssistant,
+) -> None:
+    """A custom name equal to another entity's Home Assistant name is rejected."""
+    entry = await _setup_entry(hass)
+    hass.states.async_set("light.a", "on", {"friendly_name": "Kitchen"})
+    hass.states.async_set("light.b", "on", {"friendly_name": "Hall"})
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_EXPOSED_ENTITIES: ["light.a", "light.b"]}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"light.b": "Kitchen"}
+    )
+    assert result["errors"]["base"] == "duplicate_names"
+    assert "light.a" in result["description_placeholders"]["duplicates"]

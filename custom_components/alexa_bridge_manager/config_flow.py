@@ -7,12 +7,16 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import (
+    SOURCE_RECONFIGURE,
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
@@ -93,7 +97,7 @@ def _validate_credentials(data: dict[str, Any]) -> dict[str, str]:
 
 
 class AlexaBridgeManagerConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle the initial setup of the Alexa Bridge Manager integration."""
+    """Handle the initial setup and reconfiguration of the integration."""
 
     VERSION = 1
 
@@ -115,21 +119,44 @@ class AlexaBridgeManagerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Collect the base Alexa event gateway credentials."""
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
+        return await self._async_credentials_step("user", user_input)
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the credentials or gateway without removing the entry.
+
+        Removing the entry would tell Alexa to forget every device, so this
+        is the way to rotate the client secret or switch region.
+        """
+        entry = self._get_reconfigure_entry()
+        if not self._data:
+            endpoint = entry.data[CONF_ENDPOINT]
+            self._data = {
+                **entry.data,
+                CONF_ENDPOINT: endpoint if endpoint in KNOWN_ENDPOINTS else ENDPOINT_CUSTOM,
+            }
+        return await self._async_credentials_step("reconfigure", user_input)
+
+    async def _async_credentials_step(
+        self, step_id: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        """Show/validate the endpoint + credentials form for `step_id`."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             self._data.update(user_input)
 
-            if user_input[CONF_ENDPOINT] == ENDPOINT_CUSTOM:
-                return await self.async_step_custom_endpoint()
-
+            # Validate before branching, so a credential error is shown on
+            # the form that actually has the credential fields.
             errors = _validate_credentials(self._data)
             if not errors:
-                return await self._async_create_entry()
+                if user_input[CONF_ENDPOINT] == ENDPOINT_CUSTOM:
+                    return await self.async_step_custom_endpoint()
+                return await self._async_finish()
 
         return self.async_show_form(
-            step_id="user",
+            step_id=step_id,
             data_schema=_base_schema(self._data),
             errors=errors,
         )
@@ -146,18 +173,29 @@ class AlexaBridgeManagerConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_ENDPOINT] = "invalid_endpoint"
             else:
                 self._data[CONF_ENDPOINT] = endpoint
-                errors = _validate_credentials(self._data)
-                if not errors:
-                    return await self._async_create_entry()
+                return await self._async_finish()
 
+        current = self._data.get(CONF_ENDPOINT, "")
         return self.async_show_form(
             step_id="custom_endpoint",
-            data_schema=_custom_endpoint_schema(),
+            data_schema=_custom_endpoint_schema(
+                current if current not in KNOWN_ENDPOINTS else ""
+            ),
             errors=errors,
         )
 
-    async def _async_create_entry(self) -> ConfigFlowResult:
-        """Create the config entry, guarding against duplicate client_ids."""
+    async def _async_finish(self) -> ConfigFlowResult:
+        """Create the entry (or update it when reconfiguring)."""
+        self._data[CONF_CLIENT_ID] = self._data[CONF_CLIENT_ID].strip()
+        self._data[CONF_CLIENT_SECRET] = self._data[CONF_CLIENT_SECRET].strip()
+
+        if self.source == SOURCE_RECONFIGURE:
+            return self.async_update_reload_and_abort(
+                self._get_reconfigure_entry(),
+                unique_id=self._data[CONF_CLIENT_ID],
+                data_updates=self._data,
+            )
+
         await self.async_set_unique_id(self._data[CONF_CLIENT_ID])
         self._abort_if_unique_id_configured()
 
@@ -165,6 +203,24 @@ class AlexaBridgeManagerConfigFlow(ConfigFlow, domain=DOMAIN):
             title="Alexa Bridge Manager",
             data=self._data,
         )
+
+
+def _describe_entity(
+    entity_id: str,
+    hass: HomeAssistant,
+) -> str:
+    """Return 'entity_id - Friendly name (Area)' for the naming form."""
+    state = hass.states.get(entity_id)
+    label = state.name if state else "unavailable"
+
+    registry_entry = er.async_get(hass).async_get(entity_id)
+    area_id = registry_entry.area_id if registry_entry else None
+    if area_id is None and registry_entry and registry_entry.device_id:
+        device = dr.async_get(hass).async_get(registry_entry.device_id)
+        area_id = device.area_id if device else None
+    area = ar.async_get(hass).async_get_area(area_id) if area_id else None
+
+    return f"- `{entity_id}` - {label}" + (f" ({area.name})" if area else "")
 
 
 class AlexaBridgeManagerOptionsFlow(OptionsFlow):
@@ -180,10 +236,10 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
     `async_step_names` then walks *only* that (typically much smaller)
     selection, `ENTITIES_PER_PAGE` at a time, asking for an optional Alexa
     name per entity. Submitting the last page is the save - there is no
-    separate "finish" menu to find. If two entities end up sharing a name,
-    the flow loops back to the first naming page with an error instead of
-    creating the entry, so the fix-up happens in the same place the name
-    was set.
+    separate "finish" menu to find. If two entities end up with exactly the
+    same name, the flow loops back to the first naming page with an error
+    instead of creating the entry, so the fix-up happens in the same place
+    the name was set.
     """
 
     def __init__(self) -> None:
@@ -227,6 +283,16 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
             ),
         )
 
+    def _effective_names(self) -> dict[str, str]:
+        """Name Alexa will use per exposed entity: custom name, else HA's."""
+        names: dict[str, str] = {}
+        for entity_id in self._selected:
+            state = self.hass.states.get(entity_id)
+            names[entity_id] = self._names.get(entity_id) or (
+                state.name if state else ""
+            )
+        return names
+
     async def async_step_names(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -248,7 +314,7 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
                 self._current_page += 1
                 return await self.async_step_names()
 
-            duplicates = entity_manager.find_duplicate_names(self._names)
+            duplicates = entity_manager.find_duplicate_names(self._effective_names())
             if not duplicates:
                 return self.async_create_entry(
                     title="",
@@ -261,7 +327,6 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
             # Loop back to the first page so the fix-up happens where the
             # names were entered, instead of a separate summary/error page.
             self._current_page = 0
-            start = 0
             page_ids = self._selected[0:ENTITIES_PER_PAGE]
             errors["base"] = "duplicate_names"
             description_placeholders["duplicates"] = "; ".join(
@@ -284,6 +349,10 @@ class AlexaBridgeManagerOptionsFlow(OptionsFlow):
             description_placeholders={
                 "page": str(self._current_page + 1),
                 "total_pages": str(total_pages),
+                "entities": "\n".join(
+                    _describe_entity(entity_id, self.hass) for entity_id in page_ids
+                ),
+                "duplicates": "",
                 **description_placeholders,
             },
         )

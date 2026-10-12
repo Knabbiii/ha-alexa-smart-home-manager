@@ -3,10 +3,11 @@
   "name": "Alexa Bridge Manager",
   "codeowners": ["@Knabbiii"],
   "config_flow": true,
+  "dependencies": ["alexa", "http"],
   "documentation": "https://github.com/Knabbiii/alexa_bridge_manager",
+  "integration_type": "service",
+  "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/Knabbiii/alexa_bridge_manager/issues",
-  "integration_type": "hub",
-  "iot_class": "local_push",
   "requirements": [],
-  "version": "0.4.1"
+  "version": "0.5.0"
 }

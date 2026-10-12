@@ -48,3 +48,7 @@ async def test_diagnostics_redacts_secrets_and_counts_entities(
     assert result["exposed_entity_count"] == 2
     assert result["custom_named_entity_count"] == 1
     assert result["exposed_entities"] == ["light.a", "light.b"]
+    assert result["alexa_linked"] is False
+    assert result["sync_status"] == "not_linked"
+    assert result["last_successful_sync"] is None
+    assert result["last_sync_error"] is None

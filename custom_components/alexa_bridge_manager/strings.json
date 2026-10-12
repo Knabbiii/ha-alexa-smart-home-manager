@@ -3,7 +3,16 @@
     "step": {
       "user": {
         "title": "Set up Alexa Bridge Manager",
-        "description": "Enter the credentials of your Alexa Smart Home skill (Alexa Developer Console → Smart Home → Account Linking).",
+        "description": "Enter the Client ID and Client secret of your Alexa Smart Home skill. You find them in the Alexa Developer Console under Build → Permissions → Alexa Skill Messaging, not under Account Linking.",
+        "data": {
+          "endpoint": "Alexa event gateway",
+          "client_id": "Client ID",
+          "client_secret": "Client secret"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Alexa Bridge Manager",
+        "description": "Change the event gateway or the Alexa Skill Messaging credentials. Exposed entities and names are kept. If you switch to a different skill, link it again in the Alexa app.",
         "data": {
           "endpoint": "Alexa event gateway",
           "client_id": "Client ID",
@@ -25,25 +34,26 @@
     },
     "abort": {
       "already_configured": "This Alexa skill connection is already configured.",
-      "single_instance_allowed": "Only one Alexa Bridge Manager instance is supported."
+      "single_instance_allowed": "Only one Alexa Bridge Manager instance is supported.",
+      "reconfigure_successful": "Settings updated."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Choose exposed entities",
-        "description": "Search and pick every entity Alexa should see. You can filter by name, area or domain - nothing is saved until you submit.",
+        "description": "Search and pick every entity Alexa should see. You can filter by name, area or domain. Nothing is saved until you submit.",
         "data": {
           "exposed_entities": "Entities exposed to Alexa"
         }
       },
       "names": {
         "title": "Alexa names (page {page}/{total_pages})",
-        "description": "Optionally give each entity a custom Alexa name. Leave a field empty to keep using the entity's Home Assistant name. Submitting the last page saves everything."
+        "description": "Optionally give an entity a different name for Alexa. Leave a field empty to use its Home Assistant name. Submitting the last page saves everything.\n\n{entities}"
       }
     },
     "error": {
-      "duplicate_names": "Some Alexa names are used more than once, Alexa cannot tell them apart: {duplicates}"
+      "duplicate_names": "Alexa cannot tell entities with the same name apart. Give them different names: {duplicates}"
     }
   },
   "selector": {
@@ -56,10 +66,45 @@
       }
     }
   },
+  "entity": {
+    "binary_sensor": {
+      "linked": {
+        "name": "Alexa linked"
+      }
+    },
+    "sensor": {
+      "sync_status": {
+        "name": "Sync status",
+        "state": {
+          "not_linked": "Not linked",
+          "pending": "Pending",
+          "synced": "Synced",
+          "error": "Error"
+        }
+      }
+    },
+    "button": {
+      "resync": {
+        "name": "Resync with Alexa"
+      }
+    }
+  },
   "issues": {
     "smart_home_conflict": {
       "title": "Alexa Smart Home endpoint already in use",
-      "description": "Home Assistant already has a manual `alexa: smart_home:` block in configuration.yaml, which claims the same endpoint this integration needs. Remove that block from configuration.yaml (you can keep other `alexa:` sections such as `flash_briefings`), restart Home Assistant, then reload the Alexa Bridge Manager integration."
+      "description": "Home Assistant already has an `alexa: smart_home:` block in configuration.yaml, which claims the endpoint this integration needs. Remove that block (other `alexa:` sections such as `flash_briefings` can stay) and restart Home Assistant."
+    },
+    "missing_entities": {
+      "title": "Entities exposed to Alexa no longer exist",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Stop exposing missing entities?",
+            "description": "These entities no longer exist in Home Assistant: {entities}\n\nSelect Submit to remove them from the entities exposed to Alexa. Alexa is told to forget them."
+          }
+        }
+      },
+      "description": "These entities are exposed to Alexa but no longer exist in Home Assistant: {entities}\n\nIf you only renamed one, expose its new ID under Configure."
     }
   }
 }

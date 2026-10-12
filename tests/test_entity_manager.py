@@ -19,6 +19,9 @@ from custom_components.alexa_bridge_manager.const import (
     DATA_RUNTIME_CONFIG,
     DOMAIN,
     ENDPOINT_EU,
+    STATUS_ERROR,
+    STORAGE_KEY,
+    STORAGE_VERSION,
 )
 
 # Built from the prefix constant at runtime (not a literal secret-shaped
@@ -38,6 +41,27 @@ def test_find_duplicate_names_detects_collisions() -> None:
         }
     )
     assert duplicates == {"Lampe": ["light.a", "light.b"]}
+
+
+def test_find_duplicate_names_ignores_case_and_spacing() -> None:
+    """Alexa does not tell 'Lamp' and ' lamp ' apart, so neither do we."""
+    duplicates = entity_manager.find_duplicate_names(
+        {"light.a": "Lamp", "light.b": " lamp ", "light.c": "Reading  Lamp"}
+    )
+    assert duplicates == {"Lamp": ["light.a", "light.b"]}
+
+
+def test_find_duplicate_names_allows_similar_names() -> None:
+    """Names that merely contain or resemble each other are allowed."""
+    duplicates = entity_manager.find_duplicate_names(
+        {
+            "light.a": "Lamp",
+            "light.b": "Floor Lamp",
+            "light.c": "Lamps",
+            "light.d": "Lamp 2",
+        }
+    )
+    assert duplicates == {}
 
 
 def test_find_duplicate_names_ignores_blank() -> None:
@@ -264,3 +288,143 @@ async def test_sync_discovery_does_not_advance_state_on_gateway_error(
     assert domain_data[DATA_LAST_NAMES][entry.entry_id] == {
         "light.tv_led": "TV LED Beleuchtung"
     }
+
+
+def _authorized():
+    return patch.object(
+        entity_manager.AlexaBridgeManagerConfig,
+        "authorized",
+        new_callable=lambda: property(lambda self: True),
+    )
+
+
+async def test_sync_state_is_persisted_after_success(
+    hass: HomeAssistant, hass_storage: dict
+) -> None:
+    """What Amazon was told is written to storage, surviving a restart."""
+    entry = _make_entry(
+        hass,
+        {
+            CONF_EXPOSED_ENTITIES: ["light.a"],
+            CONF_ENTITY_NAMES: {"light.a": "Lamp"},
+        },
+    )
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    domain_data[DATA_RUNTIME_CONFIG] = config
+
+    with _authorized(), patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
+        new=AsyncMock(return_value=Mock()),
+    ):
+        await entity_manager.async_sync_discovery(hass, entry)
+
+    saved = hass_storage[STORAGE_KEY]["data"]
+    assert saved["exposed"] == {entry.entry_id: ["light.a"]}
+    assert saved["names"] == {entry.entry_id: {"light.a": "Lamp"}}
+
+
+async def test_persisted_state_prevents_resend_after_restart(
+    hass: HomeAssistant, hass_storage: dict
+) -> None:
+    """A fresh process loads the baseline instead of resending everything."""
+    entry = _make_entry(hass, {CONF_EXPOSED_ENTITIES: ["light.a"]})
+    hass_storage[STORAGE_KEY] = {
+        "version": STORAGE_VERSION,
+        "key": STORAGE_KEY,
+        "data": {"exposed": {entry.entry_id: ["light.a"]}, "names": {}},
+    }
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    domain_data[DATA_RUNTIME_CONFIG] = config
+
+    with _authorized(), patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
+        new=AsyncMock(return_value=Mock()),
+    ) as mock_add:
+        await entity_manager.async_sync_discovery(hass, entry)
+
+    mock_add.assert_not_awaited()
+
+
+async def test_removal_while_unlinked_is_still_deleted_later(
+    hass: HomeAssistant, hass_storage: dict
+) -> None:
+    """A removal made before linking is sent once the skill is linked."""
+    entry = _make_entry(hass, {CONF_EXPOSED_ENTITIES: []})
+    hass_storage[STORAGE_KEY] = {
+        "version": STORAGE_VERSION,
+        "key": STORAGE_KEY,
+        "data": {"exposed": {entry.entry_id: ["light.old"]}, "names": {}},
+    }
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    domain_data[DATA_RUNTIME_CONFIG] = config
+
+    with _authorized(), patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_delete_message",
+        new=AsyncMock(return_value=Mock()),
+    ) as mock_delete:
+        await entity_manager.async_sync_discovery(hass, entry)
+
+    mock_delete.assert_awaited_once_with(hass, config, ["light.old"])
+
+
+async def test_sync_error_sets_status(hass: HomeAssistant) -> None:
+    """A rejected push is visible in the sync status, with the reason."""
+    entry = _make_entry(hass, {CONF_EXPOSED_ENTITIES: ["light.a"]})
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    domain_data[DATA_RUNTIME_CONFIG] = config
+
+    rejected = Mock()
+    rejected.raise_for_status.side_effect = Exception("401 Unauthorized")
+    with _authorized(), patch(
+        "custom_components.alexa_bridge_manager.entity_manager.async_send_add_or_update_message",
+        new=AsyncMock(return_value=rejected),
+    ):
+        await entity_manager.async_sync_discovery(hass, entry)
+
+    status = entity_manager.get_status(hass)
+    assert status.state == STATUS_ERROR
+    assert status.error == "401 Unauthorized"
+
+
+async def test_accept_grant_triggers_sync(hass: HomeAssistant) -> None:
+    """Completing account linking pushes the already-exposed entities."""
+    entry = _make_entry(hass, {CONF_EXPOSED_ENTITIES: ["light.a"]})
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+
+    with _authorized(), patch.object(
+        config._auth, "async_do_auth", new=AsyncMock(return_value=None)
+    ), patch.object(
+        entity_manager, "async_sync_discovery", new=AsyncMock()
+    ) as mock_sync:
+        assert await config.async_accept_grant("code") is None
+        await hass.async_block_till_done()
+
+    mock_sync.assert_awaited_once_with(hass, entry)
+
+
+async def test_bind_keeps_auth_when_credentials_unchanged(
+    hass: HomeAssistant,
+) -> None:
+    """Rebinding after an options reload keeps the cached access token."""
+    entry = _make_entry(hass)
+    config = entity_manager.AlexaBridgeManagerConfig(hass)
+    config.bind(entry)
+    auth = config._auth
+
+    config.bind(entry)
+    assert config._auth is auth
+
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, CONF_CLIENT_SECRET: CLIENT_SECRET_PREFIX + "new"}
+    )
+    config.bind(entry)
+    assert config._auth is not auth
