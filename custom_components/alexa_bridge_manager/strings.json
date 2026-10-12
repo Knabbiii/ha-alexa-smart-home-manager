@@ -90,11 +90,10 @@
         "step": {
           "confirm": {
             "title": "Stop exposing missing entities?",
-            "description": "These entities no longer exist in Home Assistant: {entities}\n\nSelect Submit to remove them from the entities exposed to Alexa. Alexa is told to forget them."
+            "description": "These entities are exposed to Alexa but no longer exist in Home Assistant: {entities}\n\nSelect Submit to stop exposing them. Alexa is told to forget them. If you only renamed one, expose its new ID under Configure instead."
           }
         }
-      },
-      "description": "These entities are exposed to Alexa but no longer exist in Home Assistant: {entities}\n\nIf you only renamed one, expose its new ID under Configure."
+      }
     }
   }
 }
