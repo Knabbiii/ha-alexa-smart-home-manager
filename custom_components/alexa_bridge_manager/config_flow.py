@@ -20,6 +20,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     EntitySelector,
     EntitySelectorConfig,
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -55,9 +56,11 @@ def _base_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_ENDPOINT, default=defaults.get(CONF_ENDPOINT)
             ): SelectSelector(
                 SelectSelectorConfig(
-                    options=list(KNOWN_ENDPOINTS.keys()),
+                    options=[
+                        SelectOptionDict(value=value, label=label)
+                        for value, label in KNOWN_ENDPOINTS.items()
+                    ],
                     mode=SelectSelectorMode.DROPDOWN,
-                    translation_key="endpoint",
                 )
             ),
             vol.Required(

@@ -56,16 +56,6 @@
       "duplicate_names": "Alexa cannot tell entities with the same name apart. Give them different names: {duplicates}"
     }
   },
-  "selector": {
-    "endpoint": {
-      "options": {
-        "https://api.eu.amazonalexa.com/v3/events": "Europe (EU)",
-        "https://api.amazonalexa.com/v3/events": "North America (NA)",
-        "https://api.fe.amazonalexa.com/v3/events": "Far East (FE)",
-        "custom": "Custom URL"
-      }
-    }
-  },
   "entity": {
     "binary_sensor": {
       "linked": {

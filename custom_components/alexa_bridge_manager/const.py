@@ -22,7 +22,7 @@ KNOWN_ENDPOINTS = {
     ENDPOINT_EU: "Europe (EU)",
     ENDPOINT_NA: "North America (NA)",
     ENDPOINT_FE: "Far East (FE)",
-    ENDPOINT_CUSTOM: "Custom / other",
+    ENDPOINT_CUSTOM: "Custom URL",
 }
 
 # amzn1.application-oa2-client.<hex> / amzn1.oa2-cs.v1.<hex>
