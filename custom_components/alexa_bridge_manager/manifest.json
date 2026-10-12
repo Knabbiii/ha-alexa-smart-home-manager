@@ -4,10 +4,10 @@
   "codeowners": ["@Knabbiii"],
   "config_flow": true,
   "dependencies": ["alexa", "http"],
-  "documentation": "https://github.com/Knabbiii/alexa_bridge_manager",
+  "documentation": "https://github.com/Knabbiii/ha-alexa-smart-home-manager",
   "integration_type": "service",
   "iot_class": "cloud_push",
-  "issue_tracker": "https://github.com/Knabbiii/alexa_bridge_manager/issues",
+  "issue_tracker": "https://github.com/Knabbiii/ha-alexa-smart-home-manager/issues",
   "requirements": [],
   "version": "1.0.0"
 }

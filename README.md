@@ -66,12 +66,12 @@ because they are not imported.
 
 ### HACS
 
-[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Knabbiii&repository=alexa_bridge_manager&category=integration)
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Knabbiii&repository=ha-alexa-smart-home-manager&category=integration)
 
 The button adds the repository to HACS for you. To do it by hand:
 
 1. HACS → three dots → **Custom repositories**
-2. Add `https://github.com/Knabbiii/alexa_bridge_manager` as category
+2. Add `https://github.com/Knabbiii/ha-alexa-smart-home-manager` as category
    **Integration**
 3. Install **Alexa Smart Home Manager** and restart Home Assistant
 
@@ -163,5 +163,5 @@ python -m pytest tests/ -q
 ## Issues
 
 Bug reports and feature requests are welcome in the
-[issue tracker](https://github.com/Knabbiii/alexa_bridge_manager/issues). Please
+[issue tracker](https://github.com/Knabbiii/ha-alexa-smart-home-manager/issues). Please
 attach the diagnostics download and the debug log.
